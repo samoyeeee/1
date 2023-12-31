@@ -1,0 +1,218 @@
+function preload() {
+    f = loadFont('https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf');
+}
+
+
+// Reserved name for P5 library. This function will be called once.
+function setup() 
+{
+		console.log("setup...")
+	
+		// Global scope
+ 		unitvectorX = createVector(1, 0)
+		unitvectorY = createVector(0, 1)
+
+		// Global scope
+		canvas_width = windowWidth;
+		canvas_height = windowHeight;
+
+		// The WEBGL axis directions are:
+    // Height, y, negative at top.
+    // Width x, positive right.
+    // Depth, z, negative away from camera.
+    // Coordinates center at 0,0 in middle of canvas.
+
+    // There are no built-in object reflections or shadows.
+    createCanvas(canvas_width, canvas_height);
+
+    // use the loaded font
+    textFont(f);
+    textSize(16);
+		
+		// Global scope (no var / let)
+		slider_stroke_old = 2
+		slider_stroke = createSlider(0, 20, slider_stroke_old); // min, max, default
+		slider_stroke.position(10, 10);
+		slider_stroke.style('width', '300px');
+	
+		slider_recursion_old = 6
+		slider_recursion = createSlider(0, 6, slider_recursion_old); // min, max, default
+		slider_recursion.position(10, 30);
+		slider_recursion.style('width', '300px');
+
+		slider_x_pad_old = 150
+		slider_x_pad = createSlider(-2*canvas_width, canvas_width/2, slider_x_pad_old); // min, max, default
+		slider_x_pad.position(10, 50);
+		slider_x_pad.style('width', '300px');
+
+		slider_aspect_old = 7.5
+		slider_aspect_old = 12
+		slider_aspect = createSlider(5, 15, slider_aspect_old); // min, max, default
+		slider_aspect.position(10, 70);
+		slider_aspect.style('width', '300px');
+	
+	// Global scope
+		col0 = color("#E07A5F")			// Orangey
+		col1 = color("#3D405B")			// dark blue
+		col2 = color("#81B29A")			// light steel green
+		col3 = color("#F2CC8F")			// light orangy
+		col4 = color("#F4F1DE")			// Matt white
+		col5 = color("#F1524A")			// Reddish
+
+		colors = [col0, col2, col3, col4, col5]
+		colorindex = 0
+		colors = [
+				"#88abff",
+				"#c6efff",
+				"#ffffff",
+				"#d1e3ff",
+				"#eaeaea",
+		]
+		calculate_frosty = true
+		draw_frosty = true
+	
+		console.log("setup done")
+}
+
+
+// draw an arrow for a vector at a given base position
+function drawArrow(base, vec) {
+		// The stem.
+		push()
+				translate(base)
+	
+				// Either draw directly to the end point...
+				//line(0, 0, vec.x, vec.y)
+	
+				// Or first rotate the canvas and draw only in x-direction.
+				rotate(vec.heading())
+				line(0, 0, vec.mag(), 0)
+		pop()
+	
+		// The tip. First rotate the canvas so the line is drawn only in x-direction.
+		stroke(0)
+		push()
+				translate(base.add(vec))
+				rotate(vec.heading())
+				line(0, 0, 20, 0)
+		pop()
+}
+
+
+//
+function frostify_line(line, aspect_y=1) {
+		// Splits the line into 5. 3 in the same direction and two branches.
+		// [x0, y0, x1, y1]
+		
+		// Horisontal
+		if (line[1] === line[3]) {
+				//console.log("frostify horisontal line")
+				let x_delta = (line[2]-line[0])/3
+				let y_delta = x_delta*aspect_y
+				return [
+						[line[0],             line[1], line[0] +   x_delta, line[1]],
+						[line[0] +   x_delta, line[1], line[0] + 2*x_delta, line[1]],
+						[line[0] + 2*x_delta, line[1], line[0] + 3*x_delta, line[1]],
+						
+						[line[0] +   x_delta, line[1], line[0] +   x_delta, line[3] + y_delta],  
+						[line[0] + 2*x_delta, line[1], line[0] + 2*x_delta, line[3] - y_delta],  
+				]
+		}
+		// Vertical
+	 	else {
+				//console.log("frostify vertical line")
+				let y_delta = (line[3]-line[1])/3
+				let x_delta = y_delta/aspect_y
+				return [
+						[line[0], line[1],             line[0], line[1] +   y_delta],
+						[line[0], line[1] +   y_delta, line[0], line[1] + 2*y_delta],
+						[line[0], line[1] + 2*y_delta, line[0], line[1] + 3*y_delta],
+						
+						[line[0], line[1] +   y_delta, line[0] - x_delta, line[1] +   y_delta],  
+						[line[0], line[1] + 2*y_delta, line[0] + x_delta, line[1] + 2*y_delta],  
+				]
+		}
+}
+
+// Reserved name for P5 library. This function will be called repeatedly.
+function draw() 
+{
+		// Appearance ///////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////
+
+		/*
+		slider_stroke_old = 2
+		slider_recursion_old = 1
+		slider_x_pad_old = 10
+		slider_aspect_old = 0.7
+		*/
+	
+		padding = slider_x_pad.value()
+		if (padding != slider_x_pad_old) {
+				calculate_frosty = true
+				draw_frosty = true
+		}
+		slider_x_pad_old = slider_x_pad.value()
+	
+		aspect = slider_aspect.value()/10
+		if (aspect != slider_aspect_old) {
+				calculate_frosty = true
+				draw_frosty = true
+		}
+		slider_aspect_old = slider_aspect.value()/10
+
+		frosty_times = slider_recursion.value()
+		if (frosty_times != slider_recursion_old) {
+				calculate_frosty = true
+				draw_frosty = true
+		}
+		slider_recursion_old = slider_recursion.value()
+	
+		frosty_stroke = slider_stroke.value()
+		if (frosty_stroke != slider_stroke_old) {
+				draw_frosty = true
+		}
+		slider_stroke_old = slider_stroke.value()
+		strokeWeight(frosty_stroke)
+	
+		if (calculate_frosty) {
+				calculate_frosty = false
+
+				lines = [[padding, canvas_height/2, canvas_width-padding, canvas_height/2]]
+				lines = [[canvas_width/2, 20, canvas_width/2, canvas_height-20]]
+				for (let i = 0; i < frosty_times; i++) {
+						// Frostify all lines.
+						nbr_of_segments = lines.length
+						for (let i = 0; i < nbr_of_segments; i++) {
+								new_lines = frostify_line(lines.shift(), aspect)
+								// Unpack the lines. 
+								lines = [...lines, ...new_lines]
+						}
+				}
+		}		
+		
+		if (draw_frosty) {
+				background(col1);	
+				draw_frosty = false
+				for (let i = 0; i < lines.length; i++) {
+						frostyline = lines[i]//lines.length-1-i]
+						//console.log("colorindex: " + colorindex + " color: " + colors[colorindex])
+						stroke(colors[colorindex])
+						n = floor(random(colors.length))
+						stroke(colors[n])
+
+						line(frostyline[0], frostyline[1], frostyline[2], frostyline[3])
+						colorindex = (colorindex + 1) % colors.length
+				}
+		}
+
+
+		/*
+		stroke(col3)
+		drawArrow(createVector(300, 300), createVector(0, 1).setMag(100))
+		stroke(col2)
+		drawArrow(createVector(300, 300), createVector(1, 0).setMag(200))
+		stroke(col4)
+		drawArrow(createVector(300, 300), createVector(1, 1).setMag(200))
+		*/
+}
